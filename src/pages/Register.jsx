@@ -1,21 +1,22 @@
+// src/Register.js
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { auth } from '../services/FirebaseConfig';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
-const IngresoPage = () => {
+
+const Register = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const navigation = useNavigation();
     const [message, setMessage] = useState('');
+    
 
-    const handleLogin = async () => {
+    const handleRegister = async () => {
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            setMessage("Inicio de sesión exitoso");
+            await createUserWithEmailAndPassword(auth, email, password);
+            setMessage("Usuario registrado con éxito");
         } catch (error) {
-            setMessage(`Error al iniciar sesión: ${error.message}`);
+            setMessage(`Error al registrar: ${error.message}`);
         }
     };
 
@@ -36,14 +37,8 @@ const IngresoPage = () => {
                 onChangeText={setPassword}
                 secureTextEntry
             />
-            <Button title="Iniciar sesión" onPress={handleLogin} />
+            <Button title="Registrarse" onPress={handleRegister} />
             {message ? <Text style={styles.message}>{message}</Text> : null}
-
-            <Button
-                title="¿No tienes cuenta? Regístrate"
-                onPress={() => navigation.navigate("Register")}
-                color="blue"
-            />
         </View>
     );
 };
@@ -63,9 +58,10 @@ const styles = StyleSheet.create({
     },
     message: {
         marginTop: 20,
-        color: 'red',
+        color: 'green',
+        fontWeight: 'bold',
         textAlign: 'center',
     },
 });
 
-export default IngresoPage;
+export default Register;

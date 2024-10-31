@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, Image, Button } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import { Picker } from "@react-native-picker/picker";
+import { auth, db } from '../services/FirebaseConfig';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const vehicleIcons = {
-  car: require("./assets/car.png"),
-  motorcycle: require("./assets/motorbike.png"),
-  bicycle: require("./assets/cycling.png"),
+  car: require("../../assets/car.png"),
+  motorcycle: require("../../assets/motorbike.png"),
+  bicycle: require("../../assets/cycling.png"),
 };
 
 const HomePage = () => {
@@ -18,7 +20,35 @@ const HomePage = () => {
   const [textColor, setTextColor] = useState("#000");
   const mapRef = useRef(null);
 
-  // Pedir permisos de ubicación y actualizar la velocidad y ubicación del usuario
+  // Lógica para guardar la velocidad máxima por día
+  const saveMaxSpeedForUser = async (currentSpeed) => {
+    if (!auth.currentUser) return; // Verifica si el usuario está autenticado
+
+    const userId = auth.currentUser.email;
+    const today = new Date().toISOString().split('T')[0]; // Formato de fecha YYYY-MM-DD
+    const docRef = doc(db, "userSpeeds", userId); // Referencia al documento del usuario en la colección 'userSpeeds'
+
+    try {
+      const docSnap = await getDoc(docRef); // Intenta obtener el documento del usuario
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const maxSpeed = data[today] || 0; // Obtiene la velocidad máxima del día si existe, si no, usa 0
+
+        if (currentSpeed > maxSpeed) {
+          await setDoc(docRef, { [today]: currentSpeed }, { merge: true }); // Guarda la nueva velocidad si es mayor
+          console.log("Nueva velocidad máxima registrada:", currentSpeed);
+        }
+      } else {
+        // Si el documento no existe, lo crea con la velocidad actual
+        await setDoc(docRef, { [today]: currentSpeed });
+        console.log("Documento creado y velocidad máxima guardada:", currentSpeed);
+      }
+    } catch (error) {
+      console.error("Error al guardar la velocidad:", error.message);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -38,6 +68,12 @@ const HomePage = () => {
           setSpeed(Math.max(0, currentSpeed));
           setLocation(loc.coords);
 
+          // Guarda la velocidad máxima del usuario en Firestore si es mayor que la guardada
+          if (currentSpeed > 0) {
+            saveMaxSpeedForUser(currentSpeed); 
+          }
+
+          // Cambia el color de fondo y texto según la velocidad
           if (currentSpeed === 0) {
             setBgColor("#fff");
             setTextColor("#000");
@@ -112,7 +148,7 @@ const HomePage = () => {
           style={[
             styles.picker,
             { color: textColor === "#fff" ? "#fff" : "#000" },
-          ]} // Color de texto en el picker
+          ]}
           onValueChange={(itemValue) => setVehicle(itemValue)}
         >
           <Picker.Item label="Carro" value="car" />
@@ -124,6 +160,7 @@ const HomePage = () => {
   );
 };
 
+// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
